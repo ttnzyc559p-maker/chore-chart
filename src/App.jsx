@@ -78,6 +78,7 @@ export default function App() {
   const [activeDay, setActiveDay] = useState(0);
   const [checked, setChecked] = useState({});
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [syncStatus, setSyncStatus] = useState("");
   const saveTimer = useRef(null);
 
@@ -88,11 +89,18 @@ export default function App() {
 
     const unsubChecked = onValue(checkedRef, (snap) => {
       setChecked(snap.val() || {});
+      setLoadError(null);
+      setLoading(false);
+    }, (err) => {
+      console.error("Failed to load chores", err);
+      setLoadError(err);
       setLoading(false);
     });
 
     const unsubNames = onValue(namesRef, (snap) => {
       if (snap.val()) setNames(snap.val());
+    }, (err) => {
+      console.error("Failed to load names", err);
     });
 
     return () => { unsubChecked(); unsubNames(); };
@@ -137,6 +145,18 @@ export default function App() {
 
   const isChecked = (day, kid, chore) => !!checked[`${day}-${kid}-${chore}`];
   const isSaturday = activeDay === 5;
+
+  if (loadError) return (
+    <div style={{ minHeight: "100vh", background: "#F7F3EE", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "16px", padding: "24px", textAlign: "center" }}>
+      <div style={{ fontSize: "3rem" }}>🔒</div>
+      <div style={{ fontFamily: "sans-serif", fontWeight: 700, color: "#555", fontSize: "1.1rem", maxWidth: "420px" }}>
+        Can't reach the family database — its access rules have expired.
+      </div>
+      <div style={{ fontFamily: "sans-serif", color: "#888", fontSize: "0.95rem", maxWidth: "420px" }}>
+        Fix it in the Firebase console: Realtime Database → Rules, then set read and write to true.
+      </div>
+    </div>
+  );
 
   if (loading) return (
     <div style={{ minHeight: "100vh", background: "#F7F3EE", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "16px" }}>
