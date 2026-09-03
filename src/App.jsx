@@ -67,6 +67,10 @@ function getWeekKey() {
   return `${monday.getFullYear()}-W${String(week).padStart(2, "0")}`;
 }
 
+const ALERT_ENABLED_KEY = "chores:alertEnabled";
+const ALERT_TIME_KEY = "chores:alertTime";
+const ALERT_FIRED_KEY = "chores:alertLastFired";
+
 const WEEK_KEY = getWeekKey();
 const WEEK_NUM = parseInt(WEEK_KEY.split("-W")[1], 10);
 const SAT_OFFSET = WEEK_NUM % 3;
@@ -80,6 +84,64 @@ export default function App() {
   const [loadError, setLoadError] = useState(null);
   const [syncStatus, setSyncStatus] = useState("");
   const saveTimer = useRef(null);
+
+  const notifSupported = typeof Notification !== "undefined";
+  const [alertEnabled, setAlertEnabled] = useState(() => {
+    try { return localStorage.getItem(ALERT_ENABLED_KEY) === "1"; } catch { return false; }
+  });
+  const [alertTime, setAlertTime] = useState(() => {
+    try { return localStorage.getItem(ALERT_TIME_KEY) || "16:00"; } catch { return "16:00"; }
+  });
+  const [showAlertSettings, setShowAlertSettings] = useState(false);
+
+  // Service worker lets notifications work on Android and installed home-screen apps
+  useEffect(() => {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register(import.meta.env.BASE_URL + "sw.js").catch(() => {});
+    }
+  }, []);
+
+  const toggleAlert = async () => {
+    if (alertEnabled) {
+      setAlertEnabled(false);
+      try { localStorage.setItem(ALERT_ENABLED_KEY, "0"); } catch {}
+      return;
+    }
+    if (!notifSupported) return;
+    const perm = await Notification.requestPermission();
+    if (perm !== "granted") return;
+    setAlertEnabled(true);
+    try { localStorage.setItem(ALERT_ENABLED_KEY, "1"); } catch {}
+  };
+
+  const updateAlertTime = (t) => {
+    setAlertTime(t);
+    try { localStorage.setItem(ALERT_TIME_KEY, t); } catch {}
+  };
+
+  // Fire the daily alert: at (or after) the chosen time, once per day, never on Sunday
+  useEffect(() => {
+    if (!alertEnabled || !notifSupported) return;
+    const check = async () => {
+      const now = new Date();
+      if (now.getDay() === 0) return;
+      const hhmm = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+      const today = now.toDateString();
+      let last = null;
+      try { last = localStorage.getItem(ALERT_FIRED_KEY); } catch {}
+      if (hhmm < alertTime || last === today || Notification.permission !== "granted") return;
+      try { localStorage.setItem(ALERT_FIRED_KEY, today); } catch {}
+      const opts = { body: "Time to check off today's chores!" };
+      try {
+        const reg = await navigator.serviceWorker?.getRegistration();
+        if (reg) { await reg.showNotification("🏠 Chore time!", opts); return; }
+      } catch {}
+      try { new Notification("🏠 Chore time!", opts); } catch {}
+    };
+    check();
+    const id = setInterval(check, 20000);
+    return () => clearInterval(id);
+  }, [alertEnabled, alertTime, notifSupported]);
 
   // Subscribe to Firebase — real-time updates from any device
   useEffect(() => {
@@ -201,7 +263,47 @@ export default function App() {
           {syncStatus === "saving" && <span className="sync" style={{ color: "#aaa" }}>⏳ Saving…</span>}
           {syncStatus === "saved"  && <span className="sync" style={{ color: "#6BCB77" }}>✓ Synced</span>}
           {syncStatus === "error"  && <span className="sync" style={{ color: "#FF6B6B" }}>⚠ Sync error</span>}
+          <button
+            onClick={() => setShowAlertSettings(!showAlertSettings)}
+            style={{
+              background: alertEnabled ? "#FFF3D6" : "white", border: "none", borderRadius: "20px",
+              padding: "4px 12px", fontFamily: "'Nunito', sans-serif", fontWeight: 800,
+              fontSize: "0.75rem", color: alertEnabled ? "#B8860B" : "#888", cursor: "pointer",
+              boxShadow: "0 2px 6px rgba(0,0,0,0.08)",
+            }}
+          >
+            {alertEnabled ? `🔔 Daily alert ${alertTime}` : "🔕 Daily alert off"}
+          </button>
         </div>
+        {showAlertSettings && (
+          <div className="animate-pop" style={{
+            display: "inline-flex", alignItems: "center", gap: "12px", marginTop: "10px",
+            background: "white", borderRadius: "16px", padding: "10px 16px",
+            boxShadow: "0 4px 14px rgba(0,0,0,0.1)", fontFamily: "'Nunito', sans-serif",
+          }}>
+            {notifSupported ? (
+              <>
+                <label style={{ display: "flex", alignItems: "center", gap: "6px", fontWeight: 800, fontSize: "0.85rem", color: "#555", cursor: "pointer" }}>
+                  <input type="checkbox" checked={alertEnabled} onChange={toggleAlert} style={{ width: "16px", height: "16px", accentColor: "#FFD93D" }} />
+                  Remind us at
+                </label>
+                <input
+                  type="time"
+                  value={alertTime}
+                  onChange={(e) => updateAlertTime(e.target.value)}
+                  style={{ border: "2px solid #eee", borderRadius: "10px", padding: "4px 8px", fontFamily: "'Nunito', sans-serif", fontWeight: 700, fontSize: "0.85rem", color: "#555" }}
+                />
+                <span style={{ fontSize: "0.72rem", color: "#aaa", fontWeight: 600, maxWidth: "220px", textAlign: "left" }}>
+                  Rings on this device while the chart is open — no alerts on Sundays
+                </span>
+              </>
+            ) : (
+              <span style={{ fontSize: "0.8rem", color: "#888", fontWeight: 700 }}>
+                This browser can't show alerts — on iPhone/iPad, use Share → Add to Home Screen, then turn the alert on from there.
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Kid Name Headers */}
