@@ -6,53 +6,52 @@ const COLORS = [
   { bg: "#FF6B6B", light: "#FFE5E5", text: "#C0392B", emoji: "🌟" },
   { bg: "#4ECDC4", light: "#E0F8F7", text: "#1A9E95", emoji: "🚀" },
   { bg: "#FFD93D", light: "#FFF8DC", text: "#B8860B", emoji: "🎯" },
-  { bg: "#6BCB77", light: "#E4F7E6", text: "#2E8B57", emoji: "🦋" },
 ];
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
+// Three chore sets rotate one kid to the right each day, so every chore
+// passes through all three kids during the week:
+//   Set A: Load dishwasher, Wipe kitchen counters, Set dinner table
+//   Set B: Unload dishwasher, Take out trash, Dinner cleanup
+//   Set C: Tidy living room, Vacuum living room, Clear dinner table
+// Friday swaps in its own three sets, continuing the same rotation.
 const DAILY_CHORE_ROTATION = [
-  // Monday
+  // Monday — A, B, C
   [
-    ["Load dishwasher", "Sweep kitchen floor", "Set dinner table"],
-    ["Unload dishwasher", "Wipe kitchen counters", "Dinner cleanup"],
-    ["Tidy living room", "Take out trash", "Lead scripture study"],
-    ["Vacuum living room", "Fold & put away laundry", "Clear dinner table"],
+    ["Load dishwasher", "Wipe kitchen counters", "Set dinner table"],
+    ["Unload dishwasher", "Take out trash", "Dinner cleanup"],
+    ["Tidy living room", "Vacuum living room", "Clear dinner table"],
   ],
-  // Tuesday
+  // Tuesday — C, A, B
   [
-    ["Wipe kitchen counters", "Take out trash", "Clear dinner table"],
-    ["Load dishwasher", "Sweep kitchen floor", "Lead scripture study"],
-    ["Unload dishwasher", "Fold & put away laundry", "Set dinner table"],
-    ["Tidy living room", "Vacuum living room", "Dinner cleanup"],
+    ["Tidy living room", "Vacuum living room", "Clear dinner table"],
+    ["Load dishwasher", "Wipe kitchen counters", "Set dinner table"],
+    ["Unload dishwasher", "Take out trash", "Dinner cleanup"],
   ],
-  // Wednesday
+  // Wednesday — B, C, A
   [
-    ["Tidy living room", "Vacuum living room", "Dinner cleanup"],
-    ["Sweep kitchen floor", "Take out trash", "Set dinner table"],
-    ["Load dishwasher", "Wipe kitchen counters", "Clear dinner table"],
-    ["Unload dishwasher", "Fold & put away laundry", "Lead scripture study"],
+    ["Unload dishwasher", "Take out trash", "Dinner cleanup"],
+    ["Tidy living room", "Vacuum living room", "Clear dinner table"],
+    ["Load dishwasher", "Wipe kitchen counters", "Set dinner table"],
   ],
-  // Thursday
+  // Thursday — A, B, C
   [
-    ["Unload dishwasher", "Fold & put away laundry", "Lead scripture study"],
-    ["Tidy living room", "Sweep kitchen floor", "Clear dinner table"],
-    ["Wipe kitchen counters", "Take out trash", "Dinner cleanup"],
-    ["Load dishwasher", "Vacuum living room", "Set dinner table"],
+    ["Load dishwasher", "Wipe kitchen counters", "Set dinner table"],
+    ["Unload dishwasher", "Take out trash", "Dinner cleanup"],
+    ["Tidy living room", "Vacuum living room", "Clear dinner table"],
   ],
-  // Friday
+  // Friday — Friday sets, rotated C, A, B
   [
-    ["Load dishwasher", "Wipe stovetop & microwave", "Dinner cleanup"],
-    ["Unload dishwasher", "Empty all trash cans", "Clear dinner table"],
-    ["Sweep kitchen floor", "Tidy entryway & mudroom", "Lead scripture study"],
-    ["Vacuum living room", "Fold & put away laundry", "Set dinner table"],
+    ["Tidy entryway & mudroom", "Vacuum living room", "Clear dinner table"],
+    ["Load dishwasher", "Wipe stovetop & microwave", "Set dinner table"],
+    ["Unload dishwasher", "Empty all trash cans", "Dinner cleanup"],
   ],
   // Saturday — deep clean (rotates weekly)
   [
     ["Clean upstairs bathroom", "Vacuum all carpets & rugs", "Wipe down stovetop & oven"],
     ["Clean downstairs bathroom", "Dust all furniture & shelves", "Clean microwave inside/out"],
-    ["Clean basement bathroom", "Clean windows & mirrors"],
-    ["Take out bedroom trash", "Take out basement trash"],
+    ["Clean basement bathroom", "Clean windows & mirrors", "Take out basement trash"],
   ],
 ];
 
@@ -70,10 +69,10 @@ function getWeekKey() {
 
 const WEEK_KEY = getWeekKey();
 const WEEK_NUM = parseInt(WEEK_KEY.split("-W")[1], 10);
-const SAT_OFFSET = WEEK_NUM % 4;
+const SAT_OFFSET = WEEK_NUM % 3;
 
 export default function App() {
-  const [names, setNames] = useState(["Child 1", "Child 2", "Child 3", "Child 4"]);
+  const [names, setNames] = useState(["Child 1", "Child 2", "Child 3"]);
   const [editingName, setEditingName] = useState(null);
   const [activeDay, setActiveDay] = useState(0);
   const [checked, setChecked] = useState({});
@@ -98,7 +97,7 @@ export default function App() {
     });
 
     const unsubNames = onValue(namesRef, (snap) => {
-      if (snap.val()) setNames(snap.val());
+      if (snap.val()) setNames(snap.val().slice(0, 3));
     }, (err) => {
       console.error("Failed to load names", err);
     });
@@ -206,7 +205,7 @@ export default function App() {
       </div>
 
       {/* Kid Name Headers */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "10px", marginBottom: "20px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px", marginBottom: "20px" }}>
         {names.map((name, i) => (
           <div key={i}
             style={{ background: COLORS[i].bg, borderRadius: "16px", padding: "14px 8px", textAlign: "center", cursor: "pointer" }}
