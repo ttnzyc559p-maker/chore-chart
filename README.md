@@ -2,6 +2,8 @@
 
 A real-time family chore tracker built with React + Firebase. All family members see the same progress instantly. Checkboxes reset every Monday. Saturday deep-clean assignments rotate weekly.
 
+Also includes **🏃 Mile Club** — a running-mileage tracker for the same three kids. Switch views with the tabs at the top (or open `#mileclub` directly). Log miles after each run with quick-add buttons, watch progress toward milestone badges at 25, 50, 75, and 100 miles, and review or remove recent entries. Miles share the same Firebase database and sync in real time; kids' names carry over from the chore chart.
+
 ---
 
 ## Setup Guide
